@@ -1,0 +1,137 @@
+﻿<Window x:Class="ForbiddenWords.MainWindow"
+		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+		xmlns:local="clr-namespace:ForbiddenWords"
+		mc:Ignorable="d"
+		Title="Forbidden Words Checker" Height="480" Width="700">
+
+    <Window.Resources>
+        <Style x:Key="ButtonChoose" TargetType="Button">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="Content" Value="Choose..."/>
+        </Style>
+
+        <Style x:Key="TextBoxChoosePath" TargetType="TextBox">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="GroupBoxes" TargetType="GroupBox">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="BorderThickness" Value="2"/>
+        </Style>
+
+        <Style x:Key="TextBlockActionInfo" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="RadioButtons" TargetType="RadioButton">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="ListBoxItems" TargetType="ListBoxItem">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid>
+        <TabControl Margin="5">
+            <TabItem Header="Settings" Width="60" >
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition Height="0.3*"/>
+                    </Grid.RowDefinitions>
+
+                    <GroupBox Header="Forbidden Words" Style="{StaticResource GroupBoxes}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="0.15*"/>
+                                <RowDefinition/>
+                                <RowDefinition Height="0.15*"/>
+                                <RowDefinition Height="0.4*"/>
+                            </Grid.RowDefinitions>
+
+                            <RadioButton x:Name="RadioButton_EnterWords" IsChecked="True" 
+                                         Content="Enter the words" Checked="RadioButton_Checked"
+                                         Style="{StaticResource RadioButtons}"/>
+
+                            <Grid x:Name="Grid_EnterWords" Grid.Row="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/>
+                                    <RowDefinition Height="0.20*"/>
+                                    <RowDefinition Height="0.22*"/>
+                                </Grid.RowDefinitions>
+
+                                <ListBox x:Name="ListBox_Words" Margin="2" ItemContainerStyle="{StaticResource ListBoxItems}"/>
+
+                                <TextBox x:Name="TextBox_EnterWord" VerticalContentAlignment="Center" Grid.Row="1" Margin="1"/>
+
+                                <UniformGrid Grid.Row="2" Columns="2">
+                                    <Button x:Name="Btn_AddWord" Content="Add" Margin="1" Click="Btn_AddWord_Click"/>
+                                    <Button x:Name="Btn_RemoveWord" Content="Remove" Margin="1" Click="Btn_RemoveWord_Click"/>
+                                </UniformGrid>
+                            </Grid>
+
+                            <RadioButton x:Name="RadioButton_LoadWords" Content="Load the words"
+                                         IsChecked="False" Grid.Row="2" Checked="RadioButton_Checked"
+                                         Style="{StaticResource RadioButtons}"/>
+
+                            <Grid x:Name="Grid_LoadWords" Grid.Row="3" Grid.Column="1">
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="0.8*"/>
+                                    <RowDefinition/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Enter or choose path to file with list of forbidden words" Style="{StaticResource TextBlockActionInfo}"/>
+
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="0.2*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBox x:Name="TextBox_PathToWords" Style="{StaticResource TextBoxChoosePath}"/>
+                                    <Button Tag="Words" Style="{StaticResource ButtonChoose}" Click="ButtonChoosePath_Click"/>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </GroupBox>
+
+                    <GroupBox Header="Results" Grid.Row="1" Style="{StaticResource GroupBoxes}">
+                        <Grid>
+
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="0.8*"/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Enter or select the path where the results will be saved" Style="{StaticResource TextBlockActionInfo}"/>
+
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition Width="0.2*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox x:Name="TextBox_PathToResults" Style="{StaticResource TextBoxChoosePath}"/>
+                                <Button Tag="Results" Style="{StaticResource ButtonChoose}" Click="ButtonChoosePath_Click"/>
+                            </Grid>
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Process" Width="60">
+                
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

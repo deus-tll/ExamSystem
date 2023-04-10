@@ -5,7 +5,10 @@
 		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:local="clr-namespace:ForbiddenWords"
 		mc:Ignorable="d"
-		Title="Forbidden Words Checker" Height="480" Width="700">
+		Title="Forbidden Words Checker"
+        Height="480" Width="700"
+        MinHeight="480" MinWidth="700"
+        MaxHeight="780" MaxWidth="1000">
 
     <Window.Resources>
         <Style x:Key="ButtonChoose" TargetType="Button">
@@ -69,13 +72,18 @@
                                     <RowDefinition Height="0.22*"/>
                                 </Grid.RowDefinitions>
 
-                                <ListBox x:Name="ListBox_Words" Margin="2" ItemContainerStyle="{StaticResource ListBoxItems}"/>
+                                <ListBox x:Name="ListBox_Words" Margin="2" 
+                                         ItemContainerStyle="{StaticResource ListBoxItems}"/>
 
-                                <TextBox x:Name="TextBox_EnterWord" VerticalContentAlignment="Center" Grid.Row="1" Margin="1"/>
+                                <TextBox x:Name="TextBox_EnterWord" VerticalContentAlignment="Center"
+                                         Grid.Row="1" Margin="1"/>
 
                                 <UniformGrid Grid.Row="2" Columns="2">
-                                    <Button x:Name="Btn_AddWord" Content="Add" Margin="1" Click="Btn_AddWord_Click"/>
-                                    <Button x:Name="Btn_RemoveWord" Content="Remove" Margin="1" Click="Btn_RemoveWord_Click"/>
+                                    <Button x:Name="Btn_AddWord" Content="Add"
+                                            Margin="1" Click="Btn_AddWord_Click"/>
+                                    
+                                    <Button x:Name="Btn_RemoveWord" Content="Remove"
+                                            Margin="1" Click="Btn_RemoveWord_Click"/>
                                 </UniformGrid>
                             </Grid>
 
@@ -90,7 +98,8 @@
                                     <RowDefinition/>
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Text="Enter or choose path to file with list of forbidden words" Style="{StaticResource TextBlockActionInfo}"/>
+                                <TextBlock Text="Enter or choose path to file with list of forbidden words" 
+                                           Style="{StaticResource TextBlockActionInfo}"/>
 
                                 <Grid Grid.Row="1">
                                     <Grid.ColumnDefinitions>
@@ -98,8 +107,11 @@
                                         <ColumnDefinition Width="0.2*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBox x:Name="TextBox_PathToWords" Style="{StaticResource TextBoxChoosePath}"/>
-                                    <Button Tag="Words" Style="{StaticResource ButtonChoose}" Click="ButtonChoosePath_Click"/>
+                                    <TextBox x:Name="TextBox_PathToWords" 
+                                             Style="{StaticResource TextBoxChoosePath}"/>
+                                    
+                                    <Button Tag="Words" Style="{StaticResource ButtonChoose}"
+                                            Click="ButtonChoosePath_Click"/>
                                 </Grid>
                             </Grid>
                         </Grid>
@@ -113,7 +125,8 @@
                                 <RowDefinition/>
                             </Grid.RowDefinitions>
 
-                            <TextBlock Text="Enter or select the path where the results will be saved" Style="{StaticResource TextBlockActionInfo}"/>
+                            <TextBlock Text="Enter or select the path where the results will be saved"
+                                       Style="{StaticResource TextBlockActionInfo}"/>
 
                             <Grid Grid.Row="1">
                                 <Grid.ColumnDefinitions>
@@ -121,8 +134,11 @@
                                     <ColumnDefinition Width="0.2*"/>
                                 </Grid.ColumnDefinitions>
 
-                                <TextBox x:Name="TextBox_PathToResults" Style="{StaticResource TextBoxChoosePath}"/>
-                                <Button Tag="Results" Style="{StaticResource ButtonChoose}" Click="ButtonChoosePath_Click"/>
+                                <TextBox x:Name="TextBox_PathToResults"
+                                         Style="{StaticResource TextBoxChoosePath}"/>
+                                
+                                <Button Tag="Results" Style="{StaticResource ButtonChoose}"
+                                        Click="ButtonChoosePath_Click"/>
                             </Grid>
                         </Grid>
                     </GroupBox>

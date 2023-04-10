@@ -146,7 +146,9 @@
             </TabItem>
 
             <TabItem Header="Process" Width="60">
-                
+                <Grid>
+                    
+                </Grid>
             </TabItem>
         </TabControl>
     </Grid>

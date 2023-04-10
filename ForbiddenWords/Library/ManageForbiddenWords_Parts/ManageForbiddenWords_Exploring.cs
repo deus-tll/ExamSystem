@@ -4,8 +4,12 @@ namespace Library.ManageForbiddenWords_Parts
 {
 	public partial class ManageForbiddenWords
 	{
-		public Task StartExploring() => Task.Run(Explore);
+		public Task StartExploringAsync() => Task.Factory.StartNew(StartExploring);
 
+		public void StartExploring()
+		{
+			Explore();
+		}
 
 		private async void Explore()
 		{
@@ -35,6 +39,7 @@ namespace Library.ManageForbiddenWords_Parts
 			catch (OperationCanceledException ex)
 			{
 				ExploringStopped?.Invoke(this, ex.Message);
+				return;
 			}
 			catch (Exception ex)
 			{

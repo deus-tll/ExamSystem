@@ -1,4 +1,7 @@
-﻿namespace Library.ManageForbiddenWords_Parts
+﻿using System.IO;
+using System.Linq;
+
+namespace Library.ManageForbiddenWords_Parts
 {
 	public partial class ManageForbiddenWords
 	{
@@ -23,7 +26,7 @@
 
 		private void InitializeResultsFolder()
 		{
-			string path = $"{PATH_TO_RESULTS}\\{NAME_OF_RESULTS_DIRECTORY}";
+			string path = $"{PATH_TO_CURRENT_RESULTS}\\{NAME_OF_RESULTS_DIRECTORY}";
 			string directory = "Results_";
 			string resultFolderPath;
 
@@ -49,46 +52,143 @@
 			}
 
 			action(resultFolderPath);
-			PATH_TO_RESULTS = resultFolderPath;
+			PATH_TO_CURRENT_RESULTS = resultFolderPath;
 		}
 
 
-		private Task WorkEstimate(DriveInfo[] drives)
+		private DriveInfo[]? EstimateAndGetDrives()
 		{
-			return Task.Run(() =>
+			DriveInfo[] drives = DriveInfo.GetDrives();
+			_totalDriveCount = Convert.ToInt16(drives.Length);
+
+			if (_withInterface)
 			{
-				foreach (DriveInfo drive in drives)
+				_pauseEvent = new ManualResetEvent(false);
+				_cancellationTokenSourceStop = new();
+
+				try
 				{
-					if (drive.IsReady)
+					Task task = Task.Run(() => WorkEstimate(ref drives), _cancellationTokenSourceStop.Token);
+					task.Wait();
+				}
+				catch (AggregateException ae)
+				{
+					foreach (var ex in ae.Flatten().InnerExceptions)
 					{
-						_totalFileCount += CountTextFiles(drive.RootDirectory.FullName);
+						if (ex is OperationCanceledException)
+						{
+							return null;
+						}
+						else
+							ErrorOccurred?.Invoke(null, $"{ex.HelpLink}\n{ex.InnerException}\n{ex.Source}\n{ex.Message}");
 					}
 				}
-			});
+
+				GetTotalCountOfDiscs?.Invoke(this, _totalDriveCount);
+				GetTotalCountOfFiles?.Invoke(this, _totalFileCount);
+
+				SetProgress(0, _currentDrive, null);
+
+				ProgressChanged?.Invoke("drive", _progressChanged); 
+			}
+
+			return drives;
 		}
 
 
-		private int CountTextFiles(string path)
+		private void SetProgress(double progress, long currentCountElements, string? FullName)
 		{
-			int count = 0;
+			_progressChanged.Progress = progress;
+			_progressChanged.CurrentCountElements = currentCountElements;
+			_progressChanged.FullName = FullName;
+		}
+
+
+		private void WorkEstimate(ref DriveInfo[] drives)
+		{
+			EstimateProgressChanged?.Invoke(null, true);
+
+			for (int i = 0; i < drives.Length; i++)
+			{
+				if (!drives[i].IsReady) continue;
+
+				try
+				{
+					string drive = drives[i].RootDirectory.FullName;
+					_totalFileCount += CountTextFiles(ref drive);
+				}
+				catch (OperationCanceledException ex)
+				{
+					throw new OperationCanceledException(ex.Message);
+				}
+				catch (Exception ex)
+				{
+					ErrorOccurred?.Invoke(this, ex.Message);
+				}
+			}
+
+			EstimateProgressChanged?.Invoke(null, false);
+		}
+
+		private long CountTextFiles(ref string path)
+		{
+			long count = 0;
 
 			try
 			{
 				string[] files = Directory.GetFiles(path, "*.txt");
 
-				count += files.Length;
+				count = files.LongLength;
 
-				foreach (string directory in Directory.GetDirectories(path))
+				var directories = Directory.GetDirectories(path);
+
+				for (int i = 0; i < directories.Length; i++)
 				{
-					count += CountTextFiles(directory);
+					if (_restrictedDirectories.Contains(directories[i]))
+						continue;
+
+					CheckForPauseResumeStop();
+
+					count += CountTextFiles(ref directories[i]);
+
+					CheckForPauseResumeStopCycle();
 				}
 			}
-			catch (UnauthorizedAccessException ex)
+			catch (UnauthorizedAccessException) { }
+			catch (OperationCanceledException ex)
 			{
-				ErrorOccurred?.Invoke(this, ex.Message);
+				throw new OperationCanceledException(ex.Message);
 			}
 
 			return count;
+		}
+
+
+		private void CheckForPauseResumeStop()
+		{
+			if (_cancellationTokenSourceStop is not null &&
+				_cancellationTokenSourceStop.Token.IsCancellationRequested)
+				_cancellationTokenSourceStop.Token.ThrowIfCancellationRequested();
+
+			if (_pauseEvent is not null &&
+				_pauseEvent.WaitOne(0))
+			{
+				_pauseEvent.WaitOne();
+			}
+		}
+
+
+		private void CheckForPauseResumeStopCycle()
+		{
+			while (_pauseEvent is not null &&
+				   _pauseEvent.WaitOne(0))
+			{
+				if (_cancellationTokenSourceStop is not null &&
+					_cancellationTokenSourceStop.Token.IsCancellationRequested)
+					_cancellationTokenSourceStop.Token.ThrowIfCancellationRequested();
+
+				_pauseEvent.WaitOne();
+			}
 		}
 	}
 }

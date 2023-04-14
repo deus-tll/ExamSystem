@@ -1,32 +1,82 @@
 ﻿using Library.Models;
+using System.IO;
 
 namespace Library.ManageForbiddenWords_Parts
 {
 	public partial class ManageForbiddenWords
 	{
-		public Task StartExploringAsync() => Task.Factory.StartNew(StartExploring);
+		public async Task StartExploringAsync()
+		{
+			await Task.Run(StartExploring);
+		}
+
 
 		public void StartExploring()
 		{
 			Explore();
 		}
 
-		private async void Explore()
+		private void Explore()
 		{
-			DriveInfo[] drives = DriveInfo.GetDrives();
-			_totalDiscCount = Convert.ToInt16(drives.Length);
+			DriveInfo[]? drives = EstimateAndGetDrives();
 
-			await WorkEstimate(drives);
-
-			GetTotalCountOfDiscs?.Invoke(this, _totalDiscCount);
-			GetTotalCountOfFiles?.Invoke(this, _totalFileCount);
-
-			Parallel.ForEach(drives, drive =>
+			if (drives is null)
 			{
-				ExploreDrive(drive.RootDirectory);
-			});
+				ExploringEnded?.Invoke(null, new EventArgs());
+				return;
+			}
 
-			await FullReport();
+
+			if (_withInterface)
+			{
+				_cancellationTokenSourceStop = new();
+				_pauseEvent = new ManualResetEvent(false);
+			}
+
+			List<Task> tasks = SetOrNotCancellationAndStart(drives, _cancellationTokenSourceStop);
+
+
+			try
+			{
+				Task.WaitAll(tasks.ToArray());
+			}
+			catch (AggregateException ae)
+			{
+				foreach (var ex in ae.Flatten().InnerExceptions)
+				{
+					if (ex is OperationCanceledException)
+					{
+						//nothing
+					}
+					else
+						ErrorOccurred?.Invoke(null, $"{ex.HelpLink}\n{ex.InnerException}\n{ex.Source}\n{ex.Message}");
+				}
+			}
+
+			FullReport();
+
+			ExploringEnded?.Invoke(_infectedFiles, new EventArgs());
+		}
+
+
+		private List<Task> SetOrNotCancellationAndStart(DriveInfo[] drives, CancellationTokenSource? cancellationSource)
+		{
+			List<Task> tasks = new(drives.Length);
+
+			foreach (var drive in drives)
+			{
+				Task task;
+				if (cancellationSource is not null)
+					task = new(() => ExploreDrive(drive.RootDirectory), cancellationSource.Token);
+				else
+					task = new(() => ExploreDrive(drive.RootDirectory));
+
+				tasks.Add(task);
+			}
+
+			tasks.ForEach(task => task.Start());
+
+			return tasks;
 		}
 
 
@@ -34,56 +84,95 @@ namespace Library.ManageForbiddenWords_Parts
 		{
 			try
 			{
-				ExploreFiles(directoryInfo);
+				ExploreDirectory(directoryInfo);
 			}
-			catch (OperationCanceledException ex)
+			catch (OperationCanceledException)
 			{
-				ExploringStopped?.Invoke(this, ex.Message);
-				return;
+				throw;
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
-				ErrorOccurred?.Invoke(this, ex.Message);
-				return;
+				throw;
 			}
 
-			lock (_lockObjectDiscs)
+			lock (_lockObjectElements)
 			{
-				var discsProgress = (double)++_currentDisc / _totalDiscCount * 100;
-				DiscsProgressChanged?.Invoke(directoryInfo, discsProgress);
+				SetProgress((double)++_currentDrive / _totalDriveCount * 100,
+							_currentDrive, 
+							directoryInfo.FullName);
+
+				ProgressChanged?.Invoke("drive", _progressChanged);
+			}
+        }
+
+
+		private void ExploreDirectory(DirectoryInfo directoryInfo)
+		{
+			try
+			{
+				if (_restrictedDirectories.Contains(directoryInfo.FullName))
+					return;
+
+				ExploreFiles(directoryInfo);
+
+				foreach (var subdirectory in directoryInfo.GetDirectories())
+				{
+					lock (_lockObjectPauseEvent)
+					{
+						CheckForPauseResumeStop();
+					}
+
+					ExploreDirectory(subdirectory);
+
+					lock (_lockObjectPauseEvent)
+					{
+						CheckForPauseResumeStopCycle();
+					}
+				}
+			}
+			catch (UnauthorizedAccessException) { }
+			catch (OperationCanceledException)
+			{
+				throw;
+			}
+			catch (Exception)
+			{
+				throw;
 			}
 		}
 
 
-		private Task ExploreFiles(DirectoryInfo directoryInfo)
+		private void ExploreFiles(DirectoryInfo directoryInfo)
 		{
-			return Task.Run(() =>
+			foreach (FileInfo file in directoryInfo.GetFiles("*.txt"))
 			{
-				foreach (FileInfo file in directoryInfo.GetFiles())
+				try
 				{
-					if (StoppingPausing())
-						throw new OperationCanceledException();
+					if (file.FullName == PATH_TO_WORDS)
+						continue;
 
-					try
+					lock (_lockObjectPauseEvent)
 					{
-						WorkWithFile(file);
-					}
-					catch (OperationCanceledException ex)
-					{
-						throw new OperationCanceledException(ex.Message);
-					}
-					catch (Exception ex)
-					{
-						throw new Exception(ex.Message);
+						CheckForPauseResumeStop();
 					}
 
-					lock (_lockObjectFiles)
+					WorkWithFile(file);
+
+					lock (_lockObjectPauseEvent)
 					{
-						var filesProgress = (double)++_currentFile / _totalFileCount * 100;
-						FilesProgressChanged?.Invoke(file, filesProgress);
+						CheckForPauseResumeStopCycle();
 					}
 				}
-			});
+				catch (UnauthorizedAccessException) { }
+				catch (OperationCanceledException)
+				{
+					throw;
+				}
+				catch (Exception)
+				{
+					throw;
+				}
+			}
 		}
 
 
@@ -92,29 +181,49 @@ namespace Library.ManageForbiddenWords_Parts
 			if (_forbiddenWords is null)
 				throw new Exception("List of forbidden words is empty");
 
-			if (file.Extension.ToLower() == ".txt")
+			string text;
+
+			try
 			{
-				string text = File.ReadAllText(file.FullName);
+				text = File.ReadAllText(file.FullName);
+			}
+			catch (Exception)
+			{
+				text = string.Empty;
+			}
 
-				string[] allWordsFromFile = text.Split(new char[]
-				{ ' ', ',', '.', '!', '?', '-', ';', ':', '\r', '\n' },
-				StringSplitOptions.RemoveEmptyEntries);
+			string[] allWordsFromFile = text.Split(_splitChars,
+			StringSplitOptions.RemoveEmptyEntries);
 
-				if (!allWordsFromFile.Intersect(_forbiddenWords).Any())
-					return;
+			if (!allWordsFromFile.Intersect(_forbiddenWords).Any())
+			{
+				ShowFilesProgress(file);
+				return;
+			}
 
-				try
-				{
-					WorkWithInfectedFile(file, allWordsFromFile);
-				}
-				catch (OperationCanceledException ex)
-				{
-					throw new OperationCanceledException(ex.Message);
-				}
-				catch (Exception ex)
-				{
-					throw new Exception(ex.Message);
-				}
+			try
+			{
+				WorkWithInfectedFile(file, allWordsFromFile);
+			}
+			catch (UnauthorizedAccessException) { }
+			catch (Exception)
+			{
+				throw;
+			}
+
+			ShowFilesProgress(file);
+		}
+
+
+		private void ShowFilesProgress(FileInfo file)
+		{
+			lock (_lockObjectElements)
+			{
+				SetProgress((double)++_currentFile / _totalFileCount * 100,
+							_currentFile,
+							file.FullName);
+
+				ProgressChanged?.Invoke("file", _progressChanged);
 			}
 		}
 
@@ -130,29 +239,27 @@ namespace Library.ManageForbiddenWords_Parts
 
 			foreach (string forbiddenWord in _forbiddenWords)
 			{
-				if (StoppingPausing())
-					throw new OperationCanceledException();
-
 				count = allWordsFromFile.Count(w => forbiddenWord == w);
 
 				if (count > 0)
 					forbiddenWordsInFile.Add(new ForbiddenWord(forbiddenWord, count));
 			}
 
-			InfectedFile infectedFile = new(file.Name, file.FullName, file.Length, forbiddenWordsInFile);
+			InfectedFile infectedFile = new(file.Name, Path.GetFileNameWithoutExtension(file.FullName), file.FullName, file.Length, forbiddenWordsInFile);
 
 			lock (_lockObjectInfectedFiles)
 			{
 				_infectedFiles.Add(infectedFile);
 			}
 
-			Task.Run(() => ReportInfectedFile(infectedFile));
+			ReportInfectedFile(infectedFile);
 		}
 
 
 		public void StopExploring()
 		{
-			if (_cancellationTokenSourceStop.Token.CanBeCanceled)
+			if(_cancellationTokenSourceStop?.Token.CanBeCanceled is not null &&
+				_cancellationTokenSourceStop.Token.CanBeCanceled)
 				_cancellationTokenSourceStop.Cancel();
 			else
 				throw new Exception("Can't be stopped.");
@@ -161,41 +268,15 @@ namespace Library.ManageForbiddenWords_Parts
 
 		public void PauseExploring()
 		{
-			if (_cancellationTokenSourcePause.Token.CanBeCanceled &&
-				!_cancellationTokenSourcePause.IsCancellationRequested)
-				_cancellationTokenSourcePause.Cancel();
-			else
-				throw new Exception("Can't be paused.");
+			_pauseEvent?.Set();
 		}
 
 
-		public void Resume() => _cancellationTokenSourcePause = new CancellationTokenSource();
-
-
-
-		private bool StoppingPausing()
+		public void ResumeExploring()
 		{
-			while (true)
-			{
-				if (Stopping())
-					return true;
+			_pauseEvent?.Reset();
 
-				if (_cancellationTokenSourcePause.Token.IsCancellationRequested)
-					Thread.Sleep(1000);
-				else
-					break;
-			}
-
-			return false;
-		}
-
-
-		private bool Stopping()
-		{
-			if (_cancellationTokenSourceStop.Token.IsCancellationRequested)
-				return true;
-
-			return false;
+			ExploringResumed?.Invoke(null, new EventArgs());
 		}
 	}
 }

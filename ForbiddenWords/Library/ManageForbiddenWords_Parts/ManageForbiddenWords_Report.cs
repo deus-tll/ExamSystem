@@ -1,5 +1,6 @@
 ﻿using Library.Models;
 using System.Text.RegularExpressions;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Library.ManageForbiddenWords_Parts
 {
@@ -18,14 +19,17 @@ namespace Library.ManageForbiddenWords_Parts
 
 		private void ReportCopy(InfectedFile infectedFile, string unique)
 		{
-			string destCopy = Path.Combine($"{PATH_TO_RESULTS}\\Copies", $"{infectedFile.Name}_{unique}");
+			string destCopy = Path.Combine($"{PATH_TO_CURRENT_RESULTS}\\Copies", $"{infectedFile.NameWithoutExtension}_{unique}.txt");
 			File.Copy(infectedFile.Path, destCopy);
 		}
 
 
 		private void ReportCopyWithReplaces(InfectedFile infectedFile, string unique)
 		{
-			string destCopyWithReplace = Path.Combine($"{PATH_TO_RESULTS}\\CopiesWithReplaces", $"{infectedFile.Name}_{unique}");
+			if (_forbiddenWords is null)
+				throw new Exception("List of forbidden words is empty");
+
+			string destCopyWithReplace = Path.Combine($"{PATH_TO_CURRENT_RESULTS}\\CopiesWithReplaces", $"{infectedFile.NameWithoutExtension}_{unique}.txt");
 			string replaceWord = "*******";
 
 			using StreamReader reader = new(infectedFile.Path);
@@ -35,18 +39,25 @@ namespace Library.ManageForbiddenWords_Parts
 				string? line = reader.ReadLine();
 				if (line == null) continue;
 
-				for (int i = 0; i < infectedFile.ForbiddenWords.Count; i++)
+				string[] allWordsFromLine = line.Split(new char[]
+				{ ' ', ',', '.', '!', '?', '-', ';', ':', '\r', '\n' },
+				StringSplitOptions.RemoveEmptyEntries);
+
+				
+				if (allWordsFromLine.Intersect(_forbiddenWords).Any())
 				{
-					string newLine = Regex.Replace(line, "\\b" + infectedFile.ForbiddenWords[i] + "\\b", replaceWord);
-					writer.WriteLine(newLine);
+					for (int i = 0; i < infectedFile.ForbiddenWords.Count; i++)
+						line = Regex.Replace(line, $"\\b{infectedFile.ForbiddenWords[i].Word}\\b", replaceWord);
 				}
+				writer.WriteLine(line);
+				writer.Flush();
 			}
 		}
 
 
-		private async Task FullReport()
+		private async void FullReport()
 		{
-			using StreamWriter writer = new(PATH_TO_RESULTS);
+			using StreamWriter writer = new($"{PATH_TO_CURRENT_RESULTS}\\Report.txt");
 			await writer.WriteLineAsync("Report on files found:\n");
 
 			if (_infectedFiles.Count <= 0)

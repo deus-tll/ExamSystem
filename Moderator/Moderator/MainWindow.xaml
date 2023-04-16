@@ -80,8 +80,8 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
 
-                <TextBlock x:Name="TextBlock_Moderating" Style="{StaticResource TextBlockStyle}"/>
-                <Button x:Name="Btn_Moderating" Grid.Row="1" Style="{StaticResource ButtonStyle}" Click="Command_Click"/>
+                <TextBlock x:Name="TextBlock_Monitoring" Style="{StaticResource TextBlockStyle}"/>
+                <Button x:Name="Btn_Monitoring" Grid.Row="1" Style="{StaticResource ButtonStyle}" Click="Command_Click"/>
             </Grid>
         </Border>
 

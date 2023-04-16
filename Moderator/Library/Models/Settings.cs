@@ -14,7 +14,7 @@ namespace Library.Models
 		public List<string>? SpecificWords { get; set; }
 		public List<string>? ForbiddenPrograms { get; set; }
 
-		public bool GatheringStatistic { get; set; }
-		public bool PerformModeration { get; set; }
+		public bool GatheringStatistic { get; set; } = false;
+		public bool PerformModeration { get; set; } = false;
 	}
 }

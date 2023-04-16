@@ -24,6 +24,7 @@ namespace Moderator
 		private const string COMMAND_SETTINGS = "Settings";
 		private const string COMMAND_MODERATING = "Moderating";
 		private const string COMMAND_REPORT = "Report";
+		private const string PATH_TO_SETTINGS = "settings.json";
 
 		public MainWindow()
 		{
@@ -70,7 +71,7 @@ namespace Moderator
 		#region Commands
 		private void SettingsCommand()
 		{
-			SettingsWindow settingsWindow = new();
+			SettingsWindow settingsWindow = new(PATH_TO_SETTINGS);
 			settingsWindow.ShowDialog();
 		}
 

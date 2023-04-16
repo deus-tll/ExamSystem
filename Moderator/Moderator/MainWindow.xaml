@@ -5,14 +5,37 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Moderator"
-        Height="500" Width="550"
-        WindowStartupLocation="CenterScreen">
+        Height="500" Width="650"
+        MinHeight="500" MinWidth="650"
+        MaxHeight="700" MaxWidth="750"
+        WindowStartupLocation="CenterScreen"
+        Background="DarkSlateBlue">
 
     <Window.Resources>
+        
+        
         <Style x:Key="ButtonStyle" TargetType="Button">
             <Setter Property="Margin" Value="100 5"/>
             <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="FontSize" Value="25"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Name="border"
+                        Background="DimGray"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="Gray"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+
         </Style>
 
         <Style x:Key="TextBlockStyle" TargetType="TextBlock">
@@ -20,27 +43,59 @@
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="TextAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="Borders" TargetType="Border">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="BorderThickness" Value="3"/>
+            <Setter Property="BorderBrush" Value="DimGray"/>
         </Style>
     </Window.Resources>
     
-    <Grid Margin="30">
+    <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="0.75*"/>
             <RowDefinition/>
-            <RowDefinition Height="0.75*"/>
             <RowDefinition/>
-            <RowDefinition Height="0.75*"/>
             <RowDefinition/>
         </Grid.RowDefinitions>
 
-        <TextBlock x:Name="TextBlock_Settings" Style="{StaticResource TextBlockStyle}"/>
-        <Button x:Name="Btn_Settings" Grid.Row="1" Style="{StaticResource ButtonStyle}" Click="Command_Click"/>
+        <Border Style="{StaticResource Borders}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
 
-        <TextBlock x:Name="TextBlock_Moderating" Grid.Row="2" Style="{StaticResource TextBlockStyle}"/>
-        <Button x:Name="Btn_Moderating" Grid.Row="3" Style="{StaticResource ButtonStyle}" Click="Command_Click"/>
+                <TextBlock x:Name="TextBlock_Settings" Style="{StaticResource TextBlockStyle}"/>
+                <Button x:Name="Btn_Settings" Grid.Row="1" Style="{StaticResource ButtonStyle}" Click="Command_Click"/>
+            </Grid>
+        </Border>
 
-        <TextBlock x:Name="TextBlock_Report" Grid.Row="4" Style="{StaticResource TextBlockStyle}"/>
-        <Button x:Name="Btn_Report" Grid.Row="5" Style="{StaticResource ButtonStyle}" Click="Command_Click"/>
+        <Border Grid.Row="1" Style="{StaticResource Borders}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="TextBlock_Moderating" Style="{StaticResource TextBlockStyle}"/>
+                <Button x:Name="Btn_Moderating" Grid.Row="1" Style="{StaticResource ButtonStyle}" Click="Command_Click"/>
+            </Grid>
+        </Border>
+
+
+        <Border Grid.Row="2" Style="{StaticResource Borders}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="TextBlock_Report" Style="{StaticResource TextBlockStyle}"/>
+                <Button x:Name="Btn_Report" Grid.Row="1" Style="{StaticResource ButtonStyle}" Click="Command_Click"/>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

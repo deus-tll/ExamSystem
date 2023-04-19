@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -8,7 +9,7 @@ namespace Library.Models
 	{
 		private readonly string PATH_TO_LOG_ERRORS;
 		private readonly Settings SETTINGS;
-		private KeyboardHook? _keyboardHook;
+		private IntPtr hookKeyboard = IntPtr.Zero;
 		private ProcessWatcher? _processWatcher;
 		private StatisticsReport? _statisticsReport;
 		private bool _hasStatisticsReportBeenUpdated = false;
@@ -37,8 +38,8 @@ namespace Library.Models
 
 		private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
 		{
-			ThreadPool.QueueUserWorkItem(_ => TimerElapsedStatistics());
-			ThreadPool.QueueUserWorkItem(_ => TimerElapsedModerating());
+			//ThreadPool.QueueUserWorkItem(_ => TimerElapsedStatistics());
+			//ThreadPool.QueueUserWorkItem(_ => TimerElapsedModerating());
 		}
 
 		private void TimerElapsedStatistics()
@@ -70,14 +71,16 @@ namespace Library.Models
 		}
 
 
-		public void StartMonitorig()
+		public void StartMonitoring()
 		{
 			Monitoring();
 		}
 
 		public void StopMonitoring()
 		{
-			_keyboardHook?.Unhook();
+			if (hookKeyboard != IntPtr.Zero)
+				KeyboardHook.UnhookWindowsHookEx(hookKeyboard);
+
 			_processWatcher?.StopWatch();
 			TIMER.Stop();
 			TimerElapsedStatistics();
@@ -106,9 +109,33 @@ namespace Library.Models
 
 		private void SetHook()
 		{
-			_keyboardHook = new KeyboardHook();
-			_keyboardHook.PressedKey += KeyboardHook_PressedKey;
-			_keyboardHook.SetHook();
+			if (hookKeyboard == IntPtr.Zero)
+				hookKeyboard = KeyboardHook.SetHook(HookProcedure, KeyboardHook.HookType.WH_KEYBOARD_LL);
+		}
+
+		private IntPtr HookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
+		{
+			if (nCode >= 0 && wParam == KeyboardHook.WM_KEYDOWN)
+			{
+				KeyboardHook.KBDLLHOOKSTRUCT? hookStruct = Marshal.PtrToStructure<KeyboardHook.KBDLLHOOKSTRUCT>(lParam);
+				if (hookStruct is null) return KeyboardHook.CallNextHookEx(hookKeyboard, nCode, wParam, lParam);
+
+				StringBuilder sb = new(256);
+				uint scancode = KeyboardHook.MapVirtualKey(hookStruct.vkCode, 0);
+				int result = KeyboardHook.GetKeyNameText((int)(scancode << 16), sb, sb.Capacity);
+
+				if (result > 0)
+				{
+					PressedKeyHandler(new PressedKey()
+					{
+						Key = sb.ToString(),
+						PressedDateTime = DateTime.Now
+					});
+
+					return 1;
+				}
+			}
+			return KeyboardHook.CallNextHookEx(hookKeyboard, nCode, wParam, lParam);
 		}
 
 		private void StartWatchingProcesses()
@@ -125,8 +152,10 @@ namespace Library.Models
 
 		private void ProcessStartedHandler(Process process)
 		{
-			ThreadPool.QueueUserWorkItem((param) => ProcessStartedHandlerStatistics(process));
-			ThreadPool.QueueUserWorkItem((param) => ProcessStartedHandlerModerating(process));
+			//ThreadPool.QueueUserWorkItem((param) => ProcessStartedHandlerStatistics(process));
+			//ThreadPool.QueueUserWorkItem((param) => ProcessStartedHandlerModerating(process));
+			ProcessStartedHandlerStatistics(process);
+			ProcessStartedHandlerModerating(process);
 		}
 
 		private void ProcessStartedHandlerStatistics(Process process)
@@ -157,37 +186,40 @@ namespace Library.Models
 				if (_moderatingReport is null) return;
 				if (!SETTINGS.PerformModeration) return;
 
-				string? pathToExe = process.MainModule?.FileName;
-				if (pathToExe is null) return;
-				if (SETTINGS.ForbiddenPrograms?.Contains(pathToExe) == true)
-				{
-					LaunchedProgram launchedProgram = new()
-					{
-						Name = process.ProcessName,
-						MachineName = process.MachineName,
-						PathToExe = process.MainModule?.FileName,
-						WindowHandle = process.MainWindowHandle,
-						StartedDateTime = DateTime.Now,
-					};
-
-					process.Kill();
-
-					_moderatingReport.LaunchedForbiddenPrograms.Add(launchedProgram);
-
-					_hasModeratingReportBeenUpdated = true;
-				}
+				CheckForbiddenProgram(process);
 			}
 		}
 
-		private void KeyboardHook_PressedKey(object? sender, PressedKey pressedKey)
+		private void CheckForbiddenProgram(Process process)
 		{
-			PressedKeyHandler(pressedKey);
+			string? pathToExe = process.MainModule?.FileName;
+			if (pathToExe is null) return;
+			if (SETTINGS.ForbiddenPrograms?.Contains(pathToExe) == true)
+			{
+				LaunchedProgram launchedProgram = new()
+				{
+					Name = process.ProcessName,
+					MachineName = process.MachineName,
+					PathToExe = process.MainModule?.FileName,
+					WindowHandle = process.MainWindowHandle,
+					StartedDateTime = DateTime.Now,
+				};
+
+				process.Kill();
+
+				_moderatingReport?.LaunchedForbiddenPrograms.Add(launchedProgram);
+
+				_hasModeratingReportBeenUpdated = true;
+			}
 		}
+
 
 		private void PressedKeyHandler(PressedKey pressedKey)
 		{
 			ThreadPool.QueueUserWorkItem((param) => PressedKeyHandlerStatistics(pressedKey));
 			ThreadPool.QueueUserWorkItem((param) => PressedKeyHandlerModerating(pressedKey));
+			//PressedKeyHandlerStatistics(pressedKey);
+			//PressedKeyHandlerModerating(pressedKey);
 		}
 
 		private void PressedKeyHandlerStatistics(PressedKey pressedKey)
@@ -211,25 +243,28 @@ namespace Library.Models
 				if (Regex.IsMatch(pressedKey.Key, @"\p{L}"))
 					_currentWord.Append(pressedKey.Key);
 				else
+					CheckCurrentWord();
+			}
+		}
+
+		private void CheckCurrentWord()
+		{
+			string word = _currentWord.ToString();
+			if (!string.IsNullOrEmpty(word))
+			{
+				if (SETTINGS.SpecificWords?.Contains(word) == false) return;
+
+				TypedWord typedWord = new()
 				{
-					string word = _currentWord.ToString();
-					if (!string.IsNullOrEmpty(word))
-					{
-						if (SETTINGS.SpecificWords?.Contains(word) == false) return;
+					Word = word,
+					TypedDateTime = DateTime.Now
+				};
 
-						TypedWord typedWord = new()
-						{
-							Word = word,
-							TypedDateTime = DateTime.Now
-						};
+				_moderatingReport?.TypedWords.Add(typedWord);
 
-						_moderatingReport.TypedWords.Add(typedWord);
+				_currentWord.Clear();
 
-						_currentWord.Clear();
-
-						_hasModeratingReportBeenUpdated = true;
-					}
-				}
+				_hasModeratingReportBeenUpdated = true;
 			}
 		}
 

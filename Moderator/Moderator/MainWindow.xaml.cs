@@ -1,6 +1,7 @@
 ﻿using Library.Models;
 using Moderator.AdditionalWindows;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -16,6 +17,8 @@ namespace Moderator
 		private const string COMMAND_REPORT = "Report";
 
 		private const string PATH_TO_SETTINGS = "settings.json";
+		private const string STATISTICS_REPORT = "statistics_report.json";
+		private const string MODERATING_REPORT = "moderating_report.json";
 		private const string PATH_TO_LOG_ERRORS = "log_errors.txt";
 
 		private ManageMonitoring? _manageMonitoring;
@@ -80,8 +83,7 @@ namespace Moderator
 			}
 
 			_manageMonitoring = new ManageMonitoring(PATH_TO_LOG_ERRORS, settings);
-			Thread thread = new(_manageMonitoring.StartMonitorig);
-			thread.Start();
+			_manageMonitoring.StartMonitoring();
 			//Visibility = Visibility.Hidden;
 		}
 
@@ -94,6 +96,12 @@ namespace Moderator
 				MessageBox.Show("Something went wrong while reading or there is no such a settings file.");
 				return;
 			}
+
+			if (settings.PathStatisticsReport is not null)
+				settings.PathStatisticsReport += STATISTICS_REPORT;
+
+			if (settings.PathModeratingReport is not null)
+				settings.PathModeratingReport += MODERATING_REPORT;
 
 			ReportWindow reportWindow = new(settings);
 			reportWindow.ShowDialog();

@@ -6,67 +6,66 @@ namespace Library.Models
 {
 	public class KeyboardHook
 	{
-		[DllImport("user32.dll")]
-		private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc callback, IntPtr hInstance, uint threadId);
+		public delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
+
+		[DllImport("user32.dll", SetLastError = true)]
+		public static extern IntPtr SetWindowsHookEx(HookType hookType, HookProc lpfn, IntPtr hMod, uint dwThreadId);
 
 		[DllImport("user32.dll")]
-		private static extern bool UnhookWindowsHookEx(IntPtr hInstance);
+		public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+		[DllImport("user32.dll", SetLastError = true)]
+		public static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+		[DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+		public static extern IntPtr GetModuleHandle([MarshalAs(UnmanagedType.LPWStr)] string lpModuleName);
 
 		[DllImport("user32.dll")]
-		private static extern IntPtr CallNextHookEx(IntPtr idHook, int nCode, IntPtr wParam, IntPtr lParam);
-
-		[DllImport("kernel32.dll")]
-		private static extern IntPtr LoadLibrary(string lpFileName);
-
-		[DllImport("user32.dll")]
-		private static extern uint MapVirtualKey(uint uCode, uint uMapType);
+		public static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
 		[DllImport("user32.dll", CharSet = CharSet.Auto)]
-		private static extern int GetKeyNameText(int lParam, StringBuilder lpString, int nSize);
+		public static extern int GetKeyNameText(int lParam, StringBuilder lpString, int nSize);
 
-		private const int WH_KEYBOARD_LL = 13;
-		private const int WM_KEYDOWN = 0x0100;
-		private static IntPtr _hookID = IntPtr.Zero;
-		private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
-		public event EventHandler<PressedKey>? PressedKey;
-
-		public void SetHook()
+		public static IntPtr SetHook(HookProc hookProc, HookType hookType)
 		{
-			using (Process process = Process.GetCurrentProcess())
-			using (ProcessModule? module = process.MainModule)
+			using Process process = Process.GetCurrentProcess();
+			using ProcessModule module = process.MainModule;
+			IntPtr handle = GetModuleHandle(module.ModuleName);
+			if (handle != IntPtr.Zero)
 			{
-				if (module is null)
-					throw new Exception("Module is null");
-				IntPtr hInstance = LoadLibrary(module.ModuleName);
-				_hookID = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookCallback, hInstance, 0);
+				return SetWindowsHookEx(hookType, hookProc, handle, 0);
 			}
-		}
-
-		public void Unhook()
-		{
-			UnhookWindowsHookEx(_hookID);
+			else
+				return IntPtr.Zero;
 		}
 
 
-		private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
-		{
-			if (nCode >= 0 && wParam == WM_KEYDOWN)
-			{
-				int vkCode = Marshal.ReadInt32(lParam);
-				StringBuilder sb = new(256);
-				uint scancode = MapVirtualKey((uint)vkCode, 0);
-				int result = GetKeyNameText((int)(scancode << 16), sb, sb.Capacity);
 
-				if (result > 0)
-				{
-					PressedKey?.Invoke(null, new PressedKey()
-					{
-						Key = sb.ToString(),
-						PressedDateTime = DateTime.Now
-					});
-				}
-			}
-			return CallNextHookEx(_hookID, nCode, wParam, lParam);
+		public const int WM_KEYDOWN = 0x0100;
+
+		[StructLayout(LayoutKind.Sequential)]
+		public class KBDLLHOOKSTRUCT
+		{
+			public uint vkCode;
+			public uint scanCode;
+			public KBDLLHOOKSTRUCTFlags flags;
+			public uint time;
+			public UIntPtr dwExtraInfo;
+		}
+
+		[Flags]
+		public enum KBDLLHOOKSTRUCTFlags : uint
+		{
+			LLKHF_EXTENDED = 0x01,
+			LLKHF_INJECTED = 0x10,
+			LLKHF_ALTDOWN = 0x20,
+			LLKHF_UP = 0x80,
+		}
+
+
+		public enum HookType : int
+		{
+			WH_KEYBOARD_LL = 13
 		}
 	}
 }

@@ -28,8 +28,12 @@ namespace Library.Models
 		private void Watcher_EventArrived(object sender, EventArrivedEventArgs e)
 		{
 			int processId = (int)e.NewEvent.Properties["ProcessId"].Value;
-			Process process = Process.GetProcessById(processId);
-			ProcessStarted?.Invoke(null, process);
+			Process[] processes = Process.GetProcesses();
+			if (processes.Any(p => p.Id == processId))
+			{
+				Process process = Process.GetProcessById(processId);
+				ProcessStarted?.Invoke(null, process);
+			}
 		}
 	}
 }

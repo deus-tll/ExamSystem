@@ -1,5 +1,4 @@
 ﻿using Library.Models;
-using Newtonsoft.Json;
 using Ookii.Dialogs.Wpf;
 using System;
 using System.IO;
@@ -15,7 +14,7 @@ namespace Moderator.AdditionalWindows
 	public partial class SettingsWindow : Window
 	{
 		private readonly string PATH_TO_SETTINGS;
-		private readonly Settings _settings;
+		private readonly Settings SETTINGS;
 		public SettingsWindow(string pathToSettings)
 		{
 			InitializeComponent();
@@ -23,23 +22,23 @@ namespace Moderator.AdditionalWindows
 
 			if (ManageSettings.GetSettings(PATH_TO_SETTINGS) is Settings settings)
 			{
-				_settings = settings;
+				SETTINGS = settings;
 				Initialize();
 			}
 			else
-				_settings = new();
+				SETTINGS = new();
 		}
 
 		private void Initialize()
 		{
-			TextBox_PathToReport.Text = _settings.PathToReport;
-			TextBox_PathToReportOnSpecificTypedWords.Text = _settings.PathToReportOnSpecificTypedWords;
+			TextBox_PathStatisticsReport.Text = SETTINGS.PathStatisticsReport;
+			TextBox_PathModeratingReport.Text = SETTINGS.PathModeratingReport;
 
-			ListBox_Words.ItemsSource = _settings.SpecificWords;
-			ListBox_Programs.ItemsSource = _settings.ForbiddenPrograms;
+			ListBox_Words.ItemsSource = SETTINGS.SpecificWords;
+			ListBox_Programs.ItemsSource = SETTINGS.ForbiddenPrograms;
 
-			CheckBox_Moderating.IsChecked = _settings.PerformModeration;
-			CheckBox_Statistics.IsChecked = _settings.GatheringStatistic;
+			CheckBox_Moderating.IsChecked = SETTINGS.PerformModeration;
+			CheckBox_Statistics.IsChecked = SETTINGS.GatheringStatistic;
 		}
 
 		private void ButtonChoosePath_Click(object sender, RoutedEventArgs e)
@@ -65,11 +64,11 @@ namespace Moderator.AdditionalWindows
 		{
 			switch (tag)
 			{
-				case "MainReport":
-					TextBox_PathToReport.Text = ChoosingPathDirectory();
+				case "StatisticsReport":
+					TextBox_PathStatisticsReport.Text = ChoosingPathDirectory();
 					break;
-				case "ReportTypedWords":
-					TextBox_PathToReportOnSpecificTypedWords.Text = ChoosingPathDirectory();
+				case "ModeratingReport":
+					TextBox_PathModeratingReport.Text = ChoosingPathDirectory();
 					break;
 			}
 		}
@@ -213,25 +212,25 @@ namespace Moderator.AdditionalWindows
 				return;
 			}
 
-			if (!Directory.Exists(TextBox_PathToReport.Text))
+			if (!Directory.Exists(TextBox_PathStatisticsReport.Text))
 			{
 				MessageBox.Show("Choose path to report.");
 				return;
 			}
 
-			if (!Directory.Exists(TextBox_PathToReportOnSpecificTypedWords.Text))
+			if (!Directory.Exists(TextBox_PathModeratingReport.Text))
 			{
 				MessageBox.Show("Choose path to report on specific typed words.");
 				return;
 			}
 
-			_settings.PathToReport = TextBox_PathToReport.Text;
-			_settings.PathToReportOnSpecificTypedWords = TextBox_PathToReportOnSpecificTypedWords.Text;
+			SETTINGS.PathStatisticsReport = TextBox_PathStatisticsReport.Text;
+			SETTINGS.PathModeratingReport = TextBox_PathModeratingReport.Text;
 
 			if (CheckBox_Statistics.IsChecked == true)
-				_settings.GatheringStatistic = true;
+				SETTINGS.GatheringStatistic = true;
 			else
-				_settings.GatheringStatistic = false;
+				SETTINGS.GatheringStatistic = false;
 
 			if (CheckBox_Moderating.IsChecked == true)
 			{
@@ -241,7 +240,7 @@ namespace Moderator.AdditionalWindows
 					return;
 				}
 
-				_settings.SpecificWords = ListBox_Words.Items.Cast<string>().ToList();
+				SETTINGS.SpecificWords = ListBox_Words.Items.Cast<string>().ToList();
 
 				if (ListBox_Programs.Items.Count <= 0)
 				{
@@ -249,18 +248,18 @@ namespace Moderator.AdditionalWindows
 					return;
 				}
 
-				_settings.ForbiddenPrograms = ListBox_Programs.Items.Cast<string>().ToList();
+				SETTINGS.ForbiddenPrograms = ListBox_Programs.Items.Cast<string>().ToList();
 
-				_settings.PerformModeration = true;
+				SETTINGS.PerformModeration = true;
 			}
 			else
 			{
-				_settings.PerformModeration = false;
+				SETTINGS.PerformModeration = false;
 			}
 
 			try
 			{
-				ManageSettings.SaveSettings(_settings, PATH_TO_SETTINGS);
+				ManageSettings.SaveSettings(SETTINGS, PATH_TO_SETTINGS);
 			}
 			catch (Exception ex)
 			{

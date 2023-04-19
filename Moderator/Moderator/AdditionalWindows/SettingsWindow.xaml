@@ -93,7 +93,7 @@
                         <RowDefinition/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="Enter or choose path where to store main report file" 
+                    <TextBlock Text="Enter or choose path where to store statistics report" 
                        Style="{StaticResource TextBlockActionInfo}"/>
 
                     <Grid Grid.Row="1">
@@ -102,10 +102,10 @@
                             <ColumnDefinition Width="0.2*"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBox x:Name="TextBox_PathToReport"
+                        <TextBox x:Name="TextBox_PathStatisticsReport"
                          Style="{StaticResource TextBoxChoosePath}"/>
 
-                        <Button Tag="MainReport" Style="{StaticResource ButtonChoose}"
+                        <Button Tag="StatisticsReport" Style="{StaticResource ButtonChoose}"
                         Click="ButtonChoosePath_Click"/>
                     </Grid>
                 </Grid>
@@ -117,7 +117,7 @@
                         <RowDefinition/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="Enter or choose path where to store report file on specific typed words"
+                    <TextBlock Text="Enter or choose path where to store moderating report"
                        Style="{StaticResource TextBlockActionInfo}"/>
 
                     <Grid Grid.Row="1">
@@ -126,10 +126,10 @@
                             <ColumnDefinition Width="0.2*"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBox x:Name="TextBox_PathToReportOnSpecificTypedWords" 
+                        <TextBox x:Name="TextBox_PathModeratingReport" 
                          Style="{StaticResource TextBoxChoosePath}"/>
 
-                        <Button Tag="ReportTypedWords" Style="{StaticResource ButtonChoose}" 
+                        <Button Tag="ModeratingReport" Style="{StaticResource ButtonChoose}" 
                         Click="ButtonChoosePath_Click"/>
                     </Grid>
                 </Grid>

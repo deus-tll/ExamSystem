@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Library.Models
+﻿namespace Library.Models
 {
 	public class Settings
 	{
-		public string? PathToReport { get; set; }
-		public string? PathToReportOnSpecificTypedWords { get; set; }
+		public string? PathStatisticsReport { get; set; }
+		public string? PathModeratingReport { get; set; }
 
 		public List<string>? SpecificWords { get; set; }
 		public List<string>? ForbiddenPrograms { get; set; }

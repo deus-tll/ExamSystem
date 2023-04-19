@@ -1,4 +1,6 @@
-﻿using Moderator.AdditionalWindows;
+﻿using Library.Models;
+using Moderator.AdditionalWindows;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -14,7 +16,9 @@ namespace Moderator
 		private const string COMMAND_REPORT = "Report";
 
 		private const string PATH_TO_SETTINGS = "settings.json";
-		private const string PATH_TO_LOG = "log.txt";
+		private const string PATH_TO_LOG_ERRORS = "log_errors.txt";
+
+		private ManageMonitoring? _manageMonitoring;
 
 		public MainWindow()
 		{
@@ -66,17 +70,39 @@ namespace Moderator
 		}
 
 
-		private static void MonitoringCommand()
+		private void MonitoringCommand()
 		{
+			Settings? settings = ManageSettings.GetSettings(PATH_TO_SETTINGS);
+			if (settings is null)
+			{
+				MessageBox.Show("Something went wrong while reading or there is no a settings file.");
+				return;
+			}
 
+			_manageMonitoring = new ManageMonitoring(PATH_TO_LOG_ERRORS, settings);
+			Thread thread = new(_manageMonitoring.StartMonitorig);
+			thread.Start();
+			//Visibility = Visibility.Hidden;
 		}
 
 
 		private static void ReportCommand()
 		{
-			ReportWindow reportWindow = new();
+			Settings? settings = ManageSettings.GetSettings(PATH_TO_SETTINGS);
+			if (settings is null)
+			{
+				MessageBox.Show("Something went wrong while reading or there is no such a settings file.");
+				return;
+			}
+
+			ReportWindow reportWindow = new(settings);
 			reportWindow.ShowDialog();
 		}
 		#endregion
+
+		private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+		{
+			_manageMonitoring?.StopMonitoring();
+		}
 	}
 }

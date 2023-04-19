@@ -1,16 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Library.Models;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace Moderator.AdditionalWindows
 {
@@ -19,9 +8,42 @@ namespace Moderator.AdditionalWindows
 	/// </summary>
 	public partial class ReportWindow : Window
 	{
-		public ReportWindow()
+		private readonly Settings SETTINGS;
+		private StatisticsReport? _statisticsReport;
+		private ModeratingReport? _moderatingReport;
+		public ReportWindow(Settings settings)
 		{
 			InitializeComponent();
+			SETTINGS = settings;
+			ReadAllData();
+			SetDataGrids();
+		}
+
+		private void ReadAllData()
+		{
+			string? statistics = SETTINGS.PathStatisticsReport;
+
+			if (statistics is not null)
+				_statisticsReport = ManageReports.GetStatisticsReport(statistics);
+
+			string? moderating = SETTINGS.PathModeratingReport;
+
+			if (moderating is not null)
+				_moderatingReport = ManageReports.GetModeratingReport(moderating);
+		}
+
+		private void SetDataGrids()
+		{
+			DataGrid_PressedKeys.ItemsSource = _statisticsReport?.PressedKeys;
+			DataGrid_LaunchedPrograms.ItemsSource = _statisticsReport?.LaunchedPrograms;
+			DataGrid_TypedWords.ItemsSource = _moderatingReport?.TypedWords;
+			DataGrid_LaunchedForbiddenPrograms.ItemsSource = _moderatingReport?.LaunchedForbiddenPrograms;
+		}
+
+		private void Btn_UpdateData_Click(object sender, RoutedEventArgs e)
+		{
+			ReadAllData();
+			SetDataGrids();
 		}
 	}
 }

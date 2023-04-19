@@ -6,9 +6,104 @@
         xmlns:local="clr-namespace:Moderator.AdditionalWindows"
         mc:Ignorable="d"
         Title="Moderation Report"
-        Height="450" Width="800"
-        WindowStartupLocation="CenterScreen">
+        MinHeight="750" MinWidth="800"
+        Height="750" Width="800"
+        WindowStartupLocation="CenterScreen"
+        Background="SlateGray">
+
+    <Window.Resources>
+        <Style x:Key="DataGridStyle" TargetType="DataGrid">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="ColumnWidth" Value="*"/>
+            <Setter Property="Background" Value="Lavender"/>
+            <Setter Property="RowBackground" Value="Honeydew"/>
+        </Style>
+
+        <Style x:Key="ButtonStyle" TargetType="Button">
+            <Setter Property="Margin" Value="10 5"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Name="border"
+                        Background="DimGray"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="Gray"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="0.06*"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="0.3*"/>
+        </Grid.ColumnDefinitions>
         
+        <TabControl Margin="5" Grid.ColumnSpan="2" Background="Gainsboro">
+            <TabItem Header="Pressed Keys">
+                <DataGrid x:Name="DataGrid_PressedKeys" Style="{StaticResource DataGridStyle}" >
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Key" Binding="{Binding Key}"/>
+                        <DataGridTextColumn Header="Date and time when pressed" Binding="{Binding PressedDateTime}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <TabItem Header="Launched Programs">
+                <DataGrid x:Name="DataGrid_LaunchedPrograms" Style="{StaticResource DataGridStyle}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
+                        <DataGridTextColumn Header="Machine Name" Binding="{Binding MachineName}"/>
+                        <DataGridTextColumn Header="Path" Binding="{Binding Name}"/>
+                        <DataGridTextColumn Header="hWnd" Binding="{Binding Name}"/>
+                        <DataGridTextColumn Header="Date and time when started" Binding="{Binding StartedDateTime}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <TabItem Header="Typed Words">
+                <DataGrid x:Name="DataGrid_TypedWords" Style="{StaticResource DataGridStyle}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Word" Binding="{Binding Word}"/>
+                        <DataGridTextColumn Header="Date and time when typed" Binding="{Binding TypedDateTime}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <TabItem Header="Launched Forbidden Programs">
+                <DataGrid x:Name="DataGrid_LaunchedForbiddenPrograms" Style="{StaticResource DataGridStyle}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
+                        <DataGridTextColumn Header="Machine Name" Binding="{Binding MachineName}"/>
+                        <DataGridTextColumn Header="Path" Binding="{Binding Name}"/>
+                        <DataGridTextColumn Header="hWnd" Binding="{Binding Name}"/>
+                        <DataGridTextColumn Header="Date and time when started" Binding="{Binding StartedDateTime}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
+
+        <Button x:Name="Btn_UpdateData" Content="Update Data" Style="{StaticResource ButtonStyle}" Margin="10 5" Grid.Row="1" Grid.Column="1" Click="Btn_UpdateData_Click"/>
     </Grid>
 </Window>

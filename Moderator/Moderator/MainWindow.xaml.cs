@@ -12,6 +12,7 @@ namespace Moderator
 	/// </summary>
 	public partial class MainWindow : Window
 	{
+		#region Fields and Ctors
 		private const string COMMAND_SETTINGS = "Settings";
 		private const string COMMAND_MONITORING = "Monitoring";
 		private const string COMMAND_REPORT = "Report";
@@ -28,6 +29,8 @@ namespace Moderator
 			InitializeComponent();
 			Initialize();
 		}
+		#endregion
+
 
 		#region Additional Methods
 		private void Initialize()
@@ -41,6 +44,7 @@ namespace Moderator
 			Btn_Report.Content = COMMAND_REPORT;
 		}
 		#endregion
+
 
 		#region Events MainWindow
 		private void Command_Click(object sender, RoutedEventArgs e)
@@ -61,6 +65,12 @@ namespace Moderator
 					ReportCommand();
 					break;
 			}
+		}
+
+
+		private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+		{
+			_manageMonitoring?.StopMonitoring();
 		}
 		#endregion
 
@@ -107,10 +117,5 @@ namespace Moderator
 			reportWindow.ShowDialog();
 		}
 		#endregion
-
-		private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-		{
-			_manageMonitoring?.StopMonitoring();
-		}
 	}
 }

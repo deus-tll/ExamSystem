@@ -7,6 +7,7 @@ namespace Library.Models
 {
 	public class ManageMonitoring
 	{
+		#region Fields and Ctors
 		private readonly string PATH_TO_LOG_ERRORS;
 		private readonly Settings SETTINGS;
 		private IntPtr hookKeyboard = IntPtr.Zero;
@@ -35,46 +36,15 @@ namespace Library.Models
 
 			TIMER.Elapsed += Timer_Elapsed;
 		}
-
-		private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
-		{
-			//ThreadPool.QueueUserWorkItem(_ => TimerElapsedStatistics());
-			//ThreadPool.QueueUserWorkItem(_ => TimerElapsedModerating());
-		}
-
-		private void TimerElapsedStatistics()
-		{
-			lock (_lockObjectToStatisticsReport)
-			{
-				if (!SETTINGS.GatheringStatistic) return;
-				if (!_hasStatisticsReportBeenUpdated) return;
-
-				if (_statisticsReport is not null && SETTINGS.PathStatisticsReport is not null)
-					ManageReports.SaveStatisticsReport(_statisticsReport, SETTINGS.PathStatisticsReport);
-
-				_hasStatisticsReportBeenUpdated = false;
-			}
-		}
-
-		private void TimerElapsedModerating()
-		{
-			lock (_lockObjectToModeratingReport)
-			{
-				if (!SETTINGS.PerformModeration) return;
-				if (!_hasModeratingReportBeenUpdated) return;
-
-				if (_moderatingReport is not null && SETTINGS.PathModeratingReport is not null)
-					ManageReports.SaveModeratingReport(_moderatingReport, SETTINGS.PathModeratingReport);
-
-				_hasModeratingReportBeenUpdated = false;
-			}
-		}
+		#endregion
 
 
+		#region Managing
 		public void StartMonitoring()
 		{
 			Monitoring();
 		}
+
 
 		public void StopMonitoring()
 		{
@@ -87,18 +57,19 @@ namespace Library.Models
 			TimerElapsedModerating();
 		}
 
+
 		private void Monitoring()
 		{
 			try
 			{
 				if (SETTINGS.GatheringStatistic)
 					GetStatisticsReport();
-				if(SETTINGS.PerformModeration)
+				if (SETTINGS.PerformModeration)
 					GetModeratingReport();
 			}
 			catch (Exception ex)
 			{
-				WriteLog($"{ex.Message} | {DateTime.Now}");
+				LogWriter.WriteLog(PATH_TO_LOG_ERRORS, $"{ex.Message} | {DateTime.Now}");
 			}
 
 			SetHook();
@@ -107,11 +78,21 @@ namespace Library.Models
 			TIMER.Start();
 		}
 
+
 		private void SetHook()
 		{
 			if (hookKeyboard == IntPtr.Zero)
 				hookKeyboard = KeyboardHook.SetHook(HookProcedure, KeyboardHook.HookType.WH_KEYBOARD_LL);
 		}
+
+
+		private void StartWatchingProcesses()
+		{
+			_processWatcher = new ProcessWatcher(PATH_TO_LOG_ERRORS);
+			_processWatcher.ProcessStarted += ProcessWatcher_ProcessStarted;
+			_processWatcher.StartWatch();
+		}
+
 
 		private IntPtr HookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
 		{
@@ -137,26 +118,66 @@ namespace Library.Models
 			}
 			return KeyboardHook.CallNextHookEx(hookKeyboard, nCode, wParam, lParam);
 		}
+		#endregion
 
-		private void StartWatchingProcesses()
+
+		#region Timer handlers
+		private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
 		{
-			_processWatcher = new ProcessWatcher();
-			_processWatcher.ProcessStarted += ProcessWatcher_ProcessStarted;
-			_processWatcher.StartWatch();
+			//ThreadPool.QueueUserWorkItem(_ => TimerElapsedStatistics());
+			//ThreadPool.QueueUserWorkItem(_ => TimerElapsedModerating());
 		}
 
+
+		private void TimerElapsedStatistics()
+		{
+			lock (_lockObjectToStatisticsReport)
+			{
+				if (!SETTINGS.GatheringStatistic) return;
+				if (!_hasStatisticsReportBeenUpdated) return;
+
+				if (_statisticsReport is not null && SETTINGS.PathStatisticsReport is not null)
+					ManageReports.SaveStatisticsReport(_statisticsReport, SETTINGS.PathStatisticsReport);
+
+				_hasStatisticsReportBeenUpdated = false;
+			}
+		}
+
+
+		private void TimerElapsedModerating()
+		{
+			lock (_lockObjectToModeratingReport)
+			{
+				if (!SETTINGS.PerformModeration) return;
+				if (!_hasModeratingReportBeenUpdated) return;
+
+				if (_moderatingReport is not null && SETTINGS.PathModeratingReport is not null)
+					ManageReports.SaveModeratingReport(_moderatingReport, SETTINGS.PathModeratingReport);
+
+				_hasModeratingReportBeenUpdated = false;
+			}
+		}
+		#endregion
+
+
+		#region Handlers
 		private void ProcessWatcher_ProcessStarted(object? sender, Process process)
-		{
-			ProcessStartedHandler(process);
-		}
-
-		private void ProcessStartedHandler(Process process)
 		{
 			//ThreadPool.QueueUserWorkItem((param) => ProcessStartedHandlerStatistics(process));
 			//ThreadPool.QueueUserWorkItem((param) => ProcessStartedHandlerModerating(process));
 			ProcessStartedHandlerStatistics(process);
 			ProcessStartedHandlerModerating(process);
 		}
+
+
+		private void PressedKeyHandler(PressedKey pressedKey)
+		{
+			ThreadPool.QueueUserWorkItem((param) => PressedKeyHandlerStatistics(pressedKey));
+			ThreadPool.QueueUserWorkItem((param) => PressedKeyHandlerModerating(pressedKey));
+			//PressedKeyHandlerStatistics(pressedKey);
+			//PressedKeyHandlerModerating(pressedKey);
+		}
+
 
 		private void ProcessStartedHandlerStatistics(Process process)
 		{
@@ -179,6 +200,7 @@ namespace Library.Models
 			}
 		}
 
+
 		private void ProcessStartedHandlerModerating(Process process)
 		{
 			lock (_lockObjectToModeratingReport)
@@ -189,6 +211,77 @@ namespace Library.Models
 				CheckForbiddenProgram(process);
 			}
 		}
+
+
+		private void PressedKeyHandlerStatistics(PressedKey pressedKey)
+		{
+			lock (_lockObjectToStatisticsReport)
+			{
+				if (_statisticsReport is null || !SETTINGS.GatheringStatistic) return;
+
+				_statisticsReport.PressedKeys.Add(pressedKey);
+				_hasStatisticsReportBeenUpdated = true;
+			}
+		}
+
+
+		private void PressedKeyHandlerModerating(PressedKey pressedKey)
+		{
+			lock (_lockObjectToModeratingReport)
+			{
+				if (_moderatingReport is null) return;
+				if (!SETTINGS.PerformModeration) return;
+
+				if (Regex.IsMatch(pressedKey.Key, @"\p{L}"))
+					_currentWord.Append(pressedKey.Key);
+				else
+					CheckCurrentWord();
+			}
+		}
+		#endregion
+
+
+
+		#region Additional Methods
+		private void GetStatisticsReport()
+		{
+			if (SETTINGS.PathStatisticsReport is null)
+				throw new NullReferenceException($"{nameof(SETTINGS.PathStatisticsReport)} is null");
+
+			_statisticsReport = ManageReports.GetStatisticsReport(SETTINGS.PathStatisticsReport);
+		}
+
+
+		private void GetModeratingReport()
+		{
+			if (SETTINGS.PathStatisticsReport is null)
+				throw new NullReferenceException($"{nameof(SETTINGS.PathStatisticsReport)} is null");
+
+			_moderatingReport = ManageReports.GetModeratingReport(SETTINGS.PathStatisticsReport);
+		}
+
+
+		private void CheckCurrentWord()
+		{
+			string word = _currentWord.ToString();
+			if (!string.IsNullOrEmpty(word))
+			{
+				if (SETTINGS.SpecificWords?.Contains(word) == false) return;
+
+				TypedWord typedWord = new()
+				{
+					Word = word,
+					TypedDateTime = DateTime.Now
+				};
+
+				_moderatingReport?.TypedWords.Add(typedWord);
+
+				_currentWord.Clear();
+
+				_hasModeratingReportBeenUpdated = true;
+			}
+		}
+
 
 		private void CheckForbiddenProgram(Process process)
 		{
@@ -212,84 +305,6 @@ namespace Library.Models
 				_hasModeratingReportBeenUpdated = true;
 			}
 		}
-
-
-		private void PressedKeyHandler(PressedKey pressedKey)
-		{
-			ThreadPool.QueueUserWorkItem((param) => PressedKeyHandlerStatistics(pressedKey));
-			ThreadPool.QueueUserWorkItem((param) => PressedKeyHandlerModerating(pressedKey));
-			//PressedKeyHandlerStatistics(pressedKey);
-			//PressedKeyHandlerModerating(pressedKey);
-		}
-
-		private void PressedKeyHandlerStatistics(PressedKey pressedKey)
-		{
-			lock (_lockObjectToStatisticsReport)
-			{
-				if (_statisticsReport is null || !SETTINGS.GatheringStatistic) return;
-
-				_statisticsReport.PressedKeys.Add(pressedKey);
-				_hasStatisticsReportBeenUpdated = true;
-			}
-		}
-
-		private void PressedKeyHandlerModerating(PressedKey pressedKey)
-		{
-			lock (_lockObjectToModeratingReport)
-			{
-				if (_moderatingReport is null) return;
-				if (!SETTINGS.PerformModeration) return;
-
-				if (Regex.IsMatch(pressedKey.Key, @"\p{L}"))
-					_currentWord.Append(pressedKey.Key);
-				else
-					CheckCurrentWord();
-			}
-		}
-
-		private void CheckCurrentWord()
-		{
-			string word = _currentWord.ToString();
-			if (!string.IsNullOrEmpty(word))
-			{
-				if (SETTINGS.SpecificWords?.Contains(word) == false) return;
-
-				TypedWord typedWord = new()
-				{
-					Word = word,
-					TypedDateTime = DateTime.Now
-				};
-
-				_moderatingReport?.TypedWords.Add(typedWord);
-
-				_currentWord.Clear();
-
-				_hasModeratingReportBeenUpdated = true;
-			}
-		}
-
-		private void GetStatisticsReport()
-		{
-			if (SETTINGS.PathStatisticsReport is null)
-				throw new NullReferenceException($"{nameof(SETTINGS.PathStatisticsReport)} is null");
-
-			_statisticsReport = ManageReports.GetStatisticsReport(SETTINGS.PathStatisticsReport);
-		}
-
-
-		private void GetModeratingReport()
-		{
-			if (SETTINGS.PathStatisticsReport is null)
-				throw new NullReferenceException($"{nameof(SETTINGS.PathStatisticsReport)} is null");
-
-			_moderatingReport = ManageReports.GetModeratingReport(SETTINGS.PathStatisticsReport);
-		}
-
-
-		private void WriteLog(string log)
-		{
-			using StreamWriter writer = new(PATH_TO_LOG_ERRORS, true);
-			writer.WriteLine(log);
-		}
+		#endregion
 	}
 }

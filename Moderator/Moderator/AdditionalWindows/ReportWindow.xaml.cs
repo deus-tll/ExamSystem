@@ -34,9 +34,16 @@ namespace Moderator.AdditionalWindows
 
 		private void SetDataGrids()
 		{
+			DataGrid_PressedKeys.ItemsSource = null;
 			DataGrid_PressedKeys.ItemsSource = _statisticsReport?.PressedKeys;
+
+			DataGrid_LaunchedPrograms.ItemsSource = null;
 			DataGrid_LaunchedPrograms.ItemsSource = _statisticsReport?.LaunchedPrograms;
+
+			DataGrid_TypedWords.ItemsSource = null;
 			DataGrid_TypedWords.ItemsSource = _moderatingReport?.TypedWords;
+
+			DataGrid_LaunchedForbiddenPrograms.ItemsSource = null;
 			DataGrid_LaunchedForbiddenPrograms.ItemsSource = _moderatingReport?.LaunchedForbiddenPrograms;
 		}
 

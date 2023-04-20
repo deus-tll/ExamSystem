@@ -48,7 +48,7 @@
             </Setter>
         </Style>
     </Window.Resources>
-    
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition/>
@@ -59,7 +59,7 @@
             <ColumnDefinition/>
             <ColumnDefinition Width="0.3*"/>
         </Grid.ColumnDefinitions>
-        
+
         <TabControl Margin="5" Grid.ColumnSpan="2" Background="Gainsboro">
             <TabItem Header="Pressed Keys">
                 <DataGrid x:Name="DataGrid_PressedKeys" Style="{StaticResource DataGridStyle}" >
@@ -74,9 +74,8 @@
                 <DataGrid x:Name="DataGrid_LaunchedPrograms" Style="{StaticResource DataGridStyle}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
-                        <DataGridTextColumn Header="Machine Name" Binding="{Binding MachineName}"/>
-                        <DataGridTextColumn Header="Path" Binding="{Binding Name}"/>
-                        <DataGridTextColumn Header="hWnd" Binding="{Binding Name}"/>
+                        <DataGridTextColumn Header="Path" Binding="{Binding PathToExe}"/>
+                        <DataGridTextColumn Header="hWnd" Binding="{Binding WindowHandle}"/>
                         <DataGridTextColumn Header="Date and time when started" Binding="{Binding StartedDateTime}"/>
                     </DataGrid.Columns>
                 </DataGrid>
@@ -95,9 +94,8 @@
                 <DataGrid x:Name="DataGrid_LaunchedForbiddenPrograms" Style="{StaticResource DataGridStyle}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
-                        <DataGridTextColumn Header="Machine Name" Binding="{Binding MachineName}"/>
-                        <DataGridTextColumn Header="Path" Binding="{Binding Name}"/>
-                        <DataGridTextColumn Header="hWnd" Binding="{Binding Name}"/>
+                        <DataGridTextColumn Header="Path" Binding="{Binding PathToExe}"/>
+                        <DataGridTextColumn Header="hWnd" Binding="{Binding WindowHandle}"/>
                         <DataGridTextColumn Header="Date and time when started" Binding="{Binding StartedDateTime}"/>
                     </DataGrid.Columns>
                 </DataGrid>

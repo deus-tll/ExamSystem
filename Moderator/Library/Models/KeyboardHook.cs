@@ -7,10 +7,12 @@ namespace Library.Models
 	public class KeyboardHook
 	{
 		public const int WM_KEYDOWN = 0x0100;
-
+		public const int VK_SHIFT = 0x10;
 
 		public delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
 
+		[DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+		public static extern short GetKeyState(int keyCode);
 
 		[DllImport("user32.dll", SetLastError = true)]
 		public static extern IntPtr SetWindowsHookEx(HookType hookType, HookProc lpfn, IntPtr hMod, uint dwThreadId);

@@ -13,5 +13,6 @@ namespace Moderator
 	/// </summary>
 	public partial class App : Application
 	{
+		
 	}
 }

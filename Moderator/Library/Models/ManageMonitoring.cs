@@ -1,11 +1,12 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Library.Models
 {
-	public class ManageMonitoring
+	public partial class ManageMonitoring
 	{
 		#region Fields and Ctors
 		private readonly string PATH_TO_LOG_ERRORS;
@@ -40,10 +41,7 @@ namespace Library.Models
 
 
 		#region Managing
-		public void StartMonitoring()
-		{
-			Monitoring();
-		}
+		public void StartMonitoring() => Monitoring();
 
 
 		public void StopMonitoring()
@@ -53,6 +51,9 @@ namespace Library.Models
 
 			_processWatcher?.StopWatch();
 			TIMER.Stop();
+
+			_hasStatisticsReportBeenUpdated = true;
+			_hasModeratingReportBeenUpdated = true;
 			TimerElapsedStatistics();
 			TimerElapsedModerating();
 		}
@@ -96,36 +97,51 @@ namespace Library.Models
 
 		private IntPtr HookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
 		{
+			try
+			{
+				HandleHook(nCode, wParam, lParam);
+			}
+			catch (Exception ex)
+			{
+				LogWriter.WriteLog(PATH_TO_LOG_ERRORS, $"{ex.Message} | {DateTime.Now}");
+			}
+			
+			return KeyboardHook.CallNextHookEx(hookKeyboard, nCode, wParam, lParam);
+		}
+
+		private void HandleHook(int nCode, IntPtr wParam, IntPtr lParam)
+		{
 			if (nCode >= 0 && wParam == KeyboardHook.WM_KEYDOWN)
 			{
 				KeyboardHook.KBDLLHOOKSTRUCT? hookStruct = Marshal.PtrToStructure<KeyboardHook.KBDLLHOOKSTRUCT>(lParam);
-				if (hookStruct is null) return KeyboardHook.CallNextHookEx(hookKeyboard, nCode, wParam, lParam);
+				if (hookStruct is null) return;
 
 				StringBuilder sb = new(256);
 				uint scancode = KeyboardHook.MapVirtualKey(hookStruct.vkCode, 0);
 				int result = KeyboardHook.GetKeyNameText((int)(scancode << 16), sb, sb.Capacity);
 
+				bool shiftPressed = (KeyboardHook.GetKeyState(KeyboardHook.VK_SHIFT) & 0x8000) != 0;
+
 				if (result > 0)
 				{
+					string key = shiftPressed ? sb.ToString().ToUpper() : sb.ToString().ToLower();
+
 					PressedKeyHandler(new PressedKey()
 					{
-						Key = sb.ToString(),
+						Key = key,
 						PressedDateTime = DateTime.Now
 					});
-
-					return 1;
 				}
 			}
-			return KeyboardHook.CallNextHookEx(hookKeyboard, nCode, wParam, lParam);
 		}
 		#endregion
 
 
 		#region Timer handlers
-		private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+		private async void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
 		{
-			//ThreadPool.QueueUserWorkItem(_ => TimerElapsedStatistics());
-			//ThreadPool.QueueUserWorkItem(_ => TimerElapsedModerating());
+			await Task.Run(TimerElapsedStatistics);
+			await Task.Run(TimerElapsedModerating);
 		}
 
 
@@ -161,21 +177,17 @@ namespace Library.Models
 
 
 		#region Handlers
-		private void ProcessWatcher_ProcessStarted(object? sender, Process process)
+		private async void ProcessWatcher_ProcessStarted(object? sender, Process process)
 		{
-			//ThreadPool.QueueUserWorkItem((param) => ProcessStartedHandlerStatistics(process));
-			//ThreadPool.QueueUserWorkItem((param) => ProcessStartedHandlerModerating(process));
-			ProcessStartedHandlerStatistics(process);
-			ProcessStartedHandlerModerating(process);
+			await Task.Run(() => ProcessStartedHandlerStatistics(process));
+			await Task.Run(() => ProcessStartedHandlerModerating(process));
 		}
 
 
-		private void PressedKeyHandler(PressedKey pressedKey)
+		private async void PressedKeyHandler(PressedKey pressedKey)
 		{
-			ThreadPool.QueueUserWorkItem((param) => PressedKeyHandlerStatistics(pressedKey));
-			ThreadPool.QueueUserWorkItem((param) => PressedKeyHandlerModerating(pressedKey));
-			//PressedKeyHandlerStatistics(pressedKey);
-			//PressedKeyHandlerModerating(pressedKey);
+			await Task.Run(() => PressedKeyHandlerStatistics(pressedKey));
+			await Task.Run(() => PressedKeyHandlerModerating(pressedKey));
 		}
 
 
@@ -183,13 +195,16 @@ namespace Library.Models
 		{
 			lock (_lockObjectToStatisticsReport)
 			{
-				if (_statisticsReport is null || !SETTINGS.GatheringStatistic) return;
+				string? pathToExe = process.MainModule?.FileName;
+				if (_statisticsReport is null ||
+					!SETTINGS.GatheringStatistic ||
+					pathToExe is null ||
+					SETTINGS?.ForbiddenPrograms?.Contains(pathToExe) == true) return;
 
 				LaunchedProgram launchedProgram = new()
 				{
 					Name = process.ProcessName,
-					MachineName = process.MachineName,
-					PathToExe = process.MainModule?.FileName,
+					PathToExe = pathToExe,
 					WindowHandle = process.MainWindowHandle,
 					StartedDateTime = DateTime.Now,
 				};
@@ -232,7 +247,7 @@ namespace Library.Models
 				if (_moderatingReport is null) return;
 				if (!SETTINGS.PerformModeration) return;
 
-				if (Regex.IsMatch(pressedKey.Key, @"\p{L}"))
+				if (MyRegex().IsMatch(pressedKey.Key))
 					_currentWord.Append(pressedKey.Key);
 				else
 					CheckCurrentWord();
@@ -254,10 +269,10 @@ namespace Library.Models
 
 		private void GetModeratingReport()
 		{
-			if (SETTINGS.PathStatisticsReport is null)
-				throw new NullReferenceException($"{nameof(SETTINGS.PathStatisticsReport)} is null");
+			if (SETTINGS.PathModeratingReport is null)
+				throw new NullReferenceException($"{nameof(SETTINGS.PathModeratingReport)} is null");
 
-			_moderatingReport = ManageReports.GetModeratingReport(SETTINGS.PathStatisticsReport);
+			_moderatingReport = ManageReports.GetModeratingReport(SETTINGS.PathModeratingReport);
 		}
 
 
@@ -292,7 +307,6 @@ namespace Library.Models
 				LaunchedProgram launchedProgram = new()
 				{
 					Name = process.ProcessName,
-					MachineName = process.MachineName,
 					PathToExe = process.MainModule?.FileName,
 					WindowHandle = process.MainWindowHandle,
 					StartedDateTime = DateTime.Now,
@@ -305,6 +319,9 @@ namespace Library.Models
 				_hasModeratingReportBeenUpdated = true;
 			}
 		}
+
+		[GeneratedRegex("^[\\p{L}\\p{Mn}\\p{Pd}']$")]
+		private static partial Regex MyRegex();
 		#endregion
 	}
 }

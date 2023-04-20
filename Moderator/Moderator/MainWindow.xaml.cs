@@ -43,6 +43,15 @@ namespace Moderator
 			Btn_Monitoring.Content = COMMAND_MONITORING;
 			Btn_Report.Content = COMMAND_REPORT;
 		}
+
+		private void MakePaths(Settings settings)
+		{
+			if (settings.PathStatisticsReport is not null)
+				settings.PathStatisticsReport += $"\\{STATISTICS_REPORT}";
+
+			if (settings.PathModeratingReport is not null)
+				settings.PathModeratingReport += $"\\{MODERATING_REPORT}";
+		}
 		#endregion
 
 
@@ -92,13 +101,15 @@ namespace Moderator
 				return;
 			}
 
+			MakePaths(settings);
+
 			_manageMonitoring = new ManageMonitoring(PATH_TO_LOG_ERRORS, settings);
 			_manageMonitoring.StartMonitoring();
-			//Visibility = Visibility.Hidden;
+			Visibility = Visibility.Hidden;
 		}
 
 
-		private static void ReportCommand()
+		private void ReportCommand()
 		{
 			Settings? settings = ManageSettings.GetSettings(PATH_TO_SETTINGS);
 			if (settings is null)
@@ -107,11 +118,7 @@ namespace Moderator
 				return;
 			}
 
-			if (settings.PathStatisticsReport is not null)
-				settings.PathStatisticsReport += STATISTICS_REPORT;
-
-			if (settings.PathModeratingReport is not null)
-				settings.PathModeratingReport += MODERATING_REPORT;
+			MakePaths(settings);
 
 			ReportWindow reportWindow = new(settings);
 			reportWindow.ShowDialog();

@@ -17,15 +17,14 @@ namespace Library.Models
 
 		public void StartWatch()
 		{
+			_watcher?.Stop();
+
 			_watcher = new(WQL_EVENT_QUERY);
 			_watcher.EventArrived += new EventArrivedEventHandler(Watcher_EventArrived);
 			_watcher.Start();
 		}
 
-		public void StopWatch()
-		{
-			_watcher?.Stop();
-		}
+		public void StopWatch() => _watcher?.Stop();
 
 		private void Watcher_EventArrived(object sender, EventArrivedEventArgs e)
 		{

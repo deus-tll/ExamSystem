@@ -1,6 +1,8 @@
 ﻿using Library.Models;
 using Ookii.Dialogs.Wpf;
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -15,6 +17,10 @@ namespace Moderator.AdditionalWindows
 	{
 		private readonly string PATH_TO_SETTINGS;
 		private readonly Settings SETTINGS;
+
+		private List<string>? _specificWords;
+		private List<string>? _forbiddenPrograms;
+
 		public SettingsWindow(string pathToSettings)
 		{
 			InitializeComponent();
@@ -34,8 +40,11 @@ namespace Moderator.AdditionalWindows
 			TextBox_PathStatisticsReport.Text = SETTINGS.PathStatisticsReport;
 			TextBox_PathModeratingReport.Text = SETTINGS.PathModeratingReport;
 
-			ListBox_Words.ItemsSource = SETTINGS.SpecificWords;
-			ListBox_Programs.ItemsSource = SETTINGS.ForbiddenPrograms;
+			_specificWords = SETTINGS.SpecificWords;
+			_forbiddenPrograms = SETTINGS.ForbiddenPrograms;
+
+			ListBox_Words.ItemsSource = _specificWords;
+			ListBox_Programs.ItemsSource = _forbiddenPrograms;
 
 			CheckBox_Moderating.IsChecked = SETTINGS.PerformModeration;
 			CheckBox_Statistics.IsChecked = SETTINGS.GatheringStatistic;
@@ -140,8 +149,9 @@ namespace Moderator.AdditionalWindows
 			string word = TextBox_EnterWord.Text;
 			if (string.IsNullOrEmpty(word)) return;
 
-			if (!ListBox_Words.Items.Contains(word))
-				ListBox_Words.Items.Add(word);
+			if (_specificWords is null || _specificWords.Contains(word)) return;
+			_specificWords.Add(word);
+			ListBox_Words.Items.Refresh();
 		}
 
 
@@ -150,8 +160,9 @@ namespace Moderator.AdditionalWindows
 			string program = ChoosingPathExeFile();
 			if (string.IsNullOrEmpty(program)) return;
 
-			if (!ListBox_Programs.Items.Contains(program))
-				ListBox_Programs.Items.Add(program);
+			if (_forbiddenPrograms is null || _forbiddenPrograms.Contains(program)) return;
+			_forbiddenPrograms.Add(program);
+			ListBox_Programs.Items.Refresh();
 		}
 
 
@@ -191,7 +202,10 @@ namespace Moderator.AdditionalWindows
 		{
 			if (ListBox_Words.SelectedIndex == -1) return;
 
-			ListBox_Words.Items.Remove(ListBox_Words.SelectedItem);
+			var word = (string)ListBox_Words.SelectedItem;
+			_specificWords?.Remove(word);
+
+			ListBox_Words.Items.Refresh();
 		}
 
 
@@ -199,7 +213,10 @@ namespace Moderator.AdditionalWindows
 		{
 			if (ListBox_Programs.SelectedIndex == -1) return;
 
-			ListBox_Programs.Items.Remove(ListBox_Programs.SelectedItem);
+			var program = (string)ListBox_Programs.SelectedItem;
+			_forbiddenPrograms?.Remove(program);
+
+			ListBox_Programs.Items.Refresh();
 		}
 
 
